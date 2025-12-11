@@ -473,3 +473,41 @@ OcctGeo3DObject* OcctGeo3DObject::createFromJson(const QJsonObject& json)
         return nullptr;
     }
 }
+
+TopoDS_Shape OcctGeo3DObject::getTransformedShape() const
+{
+    TopoDS_Shape baseShape = getShape();
+
+    if (baseShape.IsNull()) {
+        return baseShape;
+    }
+
+    // Create transform for position
+    gp_Trsf transform;
+    transform.SetTranslation(gp_Vec(m_position.x(), m_position.y(), m_position.z()));
+
+    // Apply rotation if not zero
+    if (m_rotation.x() != 0.0f || m_rotation.y() != 0.0f || m_rotation.z() != 0.0f) {
+        // Apply rotations around X, Y, Z axes (in radians)
+        gp_Trsf rotX, rotY, rotZ;
+
+        if (m_rotation.x() != 0.0f) {
+            rotX.SetRotation(gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(1, 0, 0)), m_rotation.x());
+        }
+
+        if (m_rotation.y() != 0.0f) {
+            rotY.SetRotation(gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 1, 0)), m_rotation.y());
+        }
+
+        if (m_rotation.z() != 0.0f) {
+            rotZ.SetRotation(gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)), m_rotation.z());
+        }
+
+        // Combine rotations: Z * Y * X (standard order)
+        gp_Trsf rotTransform = rotZ * rotY * rotX;
+        transform = transform * rotTransform;
+    }
+
+    BRepBuilderAPI_Transform transformer(baseShape, transform, Standard_True);
+    return transformer.Shape();
+}

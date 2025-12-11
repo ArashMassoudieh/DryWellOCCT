@@ -13,6 +13,7 @@
 
 // Forward declarations
 class OcctGeo3DObjectSet;
+class OcctCylinderObject;
 
 /**
  * @class OcctDrywellSystem
@@ -56,6 +57,36 @@ public:
      * Each tube represents a computational cell in the drywell model.
      */
     void generateAggregateZone();
+
+    /**
+     * @brief Generates the tube objects for the zone below the well down to groundwater
+     *
+     * Creates nr * nz_g tubes arranged in cylindrical layers below the aggregate zone.
+     * Tubes extend from -(chamberDepth + aggregateDepth) down to -depthToGroundwater.
+     */
+    void generateBelowWellZone();
+
+    /**
+     * @brief Generates the well cylinders
+     *
+     * Creates three cylinders representing the well shaft:
+     * 1. Chamber cylinder: from z=0 to z=-chamberDepth
+     * 2. Aggregate zone cylinder: from z=-chamberDepth to z=-(chamberDepth+aggregateDepth)
+     * 3. Below-well cylinder: from z=-(chamberDepth+aggregateDepth) to z=-depthToGroundwater
+     */
+    void generateWellCylinders();
+
+    /**
+     * @brief Generates all components of the drywell system
+     *
+     * Convenience method that calls:
+     * - generateAggregateZone()
+     * - generateBelowWellZone()
+     * - generateWellCylinders()
+     *
+     * Use this instead of calling each method separately.
+     */
+    void generateAll();
 
     /**
      * @brief Displays all tubes in the given AIS context
@@ -107,8 +138,22 @@ public:
     OcctTubeObject* getTube(int radialIndex, int verticalIndex) const;
 
     /**
+     * @brief Gets all tube objects in the below-well zone
+     * @return Vector of pointers to OcctTubeObject instances
+     */
+    const QVector<OcctTubeObject*>& getBelowWellTubes() const;
+
+    /**
+     * @brief Gets a specific below-well tube by radial and vertical indices
+     * @param radialIndex Index in radial direction (0 to nr-1)
+     * @param verticalIndex Index in vertical direction (0 to nz_g-1)
+     * @return Pointer to the tube, or nullptr if indices are invalid
+     */
+    OcctTubeObject* getBelowWellTube(int radialIndex, int verticalIndex) const;
+
+    /**
      * @brief Gets the number of tubes created
-     * @return Total number of tubes (should be nr * nz_w)
+     * @return Total number of tubes (aggregate + below-well)
      */
     int getTubeCount() const;
 
@@ -143,6 +188,7 @@ public:
     // Calculated parameters
     float getRadialCellSize() const;
     float getVerticalCellSize() const;
+    float getBelowWellVerticalCellSize() const;
 
 private:
     // System parameters
@@ -157,10 +203,18 @@ private:
 
     // Generated tubes
     QVector<OcctTubeObject*> m_tubes;
+    QVector<OcctTubeObject*> m_belowWellTubes;
+
+    // Well cylinders
+    OcctCylinderObject* m_chamberCylinder;        // 0 to -chamberDepth
+    OcctCylinderObject* m_aggregateWellCylinder;  // -chamberDepth to -(chamberDepth+aggregateDepth)
+    OcctCylinderObject* m_belowWellCylinder;      // -(chamberDepth+aggregateDepth) to -depthToGroundwater
 
     // Helper methods
     void createTube(int radialIndex, int verticalIndex);
+    void createBelowWellTube(int radialIndex, int verticalIndex);
     int getTubeIndex(int radialIndex, int verticalIndex) const;
+    int getBelowWellTubeIndex(int radialIndex, int verticalIndex) const;
 };
 
 #endif // OCCTDRYWELLSYSTEM_H

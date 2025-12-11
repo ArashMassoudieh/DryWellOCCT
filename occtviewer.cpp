@@ -17,8 +17,12 @@
 #include <QPaintEvent>
 #include <QResizeEvent>
 #include <QFont>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QDir>
 
 #include <OpenGl_GraphicDriver.hxx>
+#include <TCollection_AsciiString.hxx>
 
 #ifdef _WIN32
 #include <WNT_Window.hxx>
@@ -143,6 +147,11 @@ Handle(AIS_InteractiveContext) OcctViewerWidget::getContext() const
     return m_context;
 }
 
+Handle(V3d_View) OcctViewerWidget::getView() const
+{
+    return m_view;
+}
+
 void OcctViewerWidget::fitAll()
 {
     if (!m_view.IsNull()) {
@@ -254,6 +263,18 @@ void OcctViewer::setupUI()
     connect(fitButton, &QPushButton::clicked, this, &OcctViewer::fitAll);
     buttonLayout->addWidget(fitButton);
 
+    QPushButton* saveButton = new QPushButton("Save Image", this);
+    saveButton->setMaximumWidth(90);  // Limit width
+    saveButton->setMaximumHeight(24);  // Compact height
+    connect(saveButton, &QPushButton::clicked, this, &OcctViewer::saveImage);
+    buttonLayout->addWidget(saveButton);
+
+    QPushButton* exportButton = new QPushButton("Export STEP", this);
+    exportButton->setMaximumWidth(90);  // Limit width
+    exportButton->setMaximumHeight(24);  // Compact height
+    connect(exportButton, &QPushButton::clicked, this, &OcctViewer::exportToSTEP);
+    buttonLayout->addWidget(exportButton);
+
     buttonLayout->addStretch();
 
     QLabel* infoLabel = new QLabel("L: Rotate | M: Pan | Wheel: Zoom", this);
@@ -345,5 +366,86 @@ void OcctViewer::fitAll()
 {
     if (m_viewerWidget) {
         m_viewerWidget->fitAll();
+    }
+}
+
+void OcctViewer::saveImage()
+{
+    if (!m_viewerWidget) {
+        return;
+    }
+
+    // Get the view
+    Handle(V3d_View) view = m_viewerWidget->getView();
+    if (view.IsNull()) {
+        QMessageBox::warning(this, "Save Image", "No view available to save.");
+        return;
+    }
+
+    // Open file dialog
+    QString fileName = QFileDialog::getSaveFileName(
+        this,
+        "Save Image",
+        QDir::homePath() + "/view.png",
+        "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg);;BMP Image (*.bmp);;All Files (*)"
+        );
+
+    if (fileName.isEmpty()) {
+        return;  // User cancelled
+    }
+
+    // Ensure file has extension
+    if (!fileName.contains('.')) {
+        fileName += ".png";
+    }
+
+    // Convert QString to TCollection_AsciiString for OCCT
+    TCollection_AsciiString occtFileName(fileName.toUtf8().constData());
+
+    // Dump the view to file
+    Standard_Boolean result = view->Dump(occtFileName.ToCString());
+
+    if (result) {
+        QMessageBox::information(this, "Save Image",
+                                 QString("Image saved successfully to:\n%1").arg(fileName));
+    } else {
+        QMessageBox::critical(this, "Save Image",
+                              QString("Failed to save image to:\n%1").arg(fileName));
+    }
+}
+
+void OcctViewer::exportToSTEP()
+{
+    if (!m_objectSet || m_objectSet->isEmpty()) {
+        QMessageBox::warning(this, "Export STEP", "No objects to export. Please display objects first.");
+        return;
+    }
+
+    // Open file dialog
+    QString fileName = QFileDialog::getSaveFileName(
+        this,
+        "Export to STEP",
+        QDir::homePath() + "/drywell_system.step",
+        "STEP Files (*.step *.stp);;All Files (*)"
+        );
+
+    if (fileName.isEmpty()) {
+        return;  // User cancelled
+    }
+
+    // Ensure file has extension
+    if (!fileName.contains('.')) {
+        fileName += ".step";
+    }
+
+    // Export using the object set's exportToSTEP method
+    bool success = m_objectSet->exportToSTEP(fileName);
+
+    if (success) {
+        QMessageBox::information(this, "Export STEP",
+                                 QString("Successfully exported to STEP file:\n%1\n\nYou can now open this file in AutoCAD, SolidWorks, FreeCAD, or other CAD programs.").arg(fileName));
+    } else {
+        QMessageBox::critical(this, "Export STEP",
+                              QString("Failed to export to STEP file:\n%1").arg(fileName));
     }
 }

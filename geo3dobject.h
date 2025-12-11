@@ -6,6 +6,8 @@
 #include <QJsonObject>
 #include <functional>
 #include <QMap>
+#include <TopoDS_Shape.hxx>
+#include <gp_Trsf.hxx>
 
 QT_BEGIN_NAMESPACE
 namespace Qt3DCore {

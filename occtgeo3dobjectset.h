@@ -14,6 +14,8 @@
 #include <QJsonObject>
 
 #include <AIS_InteractiveContext.hxx>
+#include <TopoDS_Compound.hxx>
+#include <QString>
 
 class OcctGeo3DObject;
 
@@ -111,6 +113,19 @@ public:
     // File I/O
     bool saveToFile(const QString& filePath) const;
     bool loadFromFile(const QString& filePath);
+
+    /**
+     * @brief Exports all objects to STEP file format
+     * @param filename Path to output STEP file (e.g., "output.step")
+     * @return true if successful, false otherwise
+     */
+    bool exportToSTEP(const QString& filename) const;
+
+    /**
+     * @brief Gets all shapes combined into a compound
+     * @return TopoDS_Compound containing all object shapes
+     */
+    TopoDS_Compound getAllShapesCompound() const;
 
 private:
     QMap<QString, OcctGeo3DObject*> m_objects;

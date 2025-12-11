@@ -61,31 +61,16 @@ win32 {
     LIBS += -L$$OCCT_ROOT/win64/vc14/lib
 }
 
-# Required OpenCASCADE libraries
-LIBS += \
-    -lTKernel \
-    -lTKMath \
-    -lTKG2d \
-    -lTKG3d \
-    -lTKGeomBase \
-    -lTKBRep \
-    -lTKGeomAlgo \
-    -lTKTopAlgo \
-    -lTKPrim \
-    -lTKBO \
-    -lTKBool \
-    -lTKShHealing \
-    -lTKMesh \
-    -lTKService \
-    -lTKV3d \
-    -lTKOpenGl \
-    -lTKFillet \
-    -lTKOffset
+unix:!macx {
+    OCCT_ROOT = /usr/local
+    INCLUDEPATH += $$OCCT_ROOT/include/opencascade
+    LIBS += -L$$OCCT_ROOT/lib
+    QMAKE_RPATHDIR += $$OCCT_ROOT/lib  # ← Important for runtime!
+}
 
-# For AIS (visualization)
-LIBS += \
-    -lTKV3d \
-    -lTKService
+LIBS += -lTKSTEP -lTKSTEPBase -lTKSTEPAttr -lTKXSBase \
+        -lTKernel -lTKMath -lTKBRep -lTKTopAlgo \
+        -lTKPrim -lTKBO -lTKBool -lTKV3d -lTKService -lTKOpenGl
 
 # Additional libraries if using STEP/IGES import/export
 # LIBS += -lTKXSBase -lTKSTEP -lTKIGES

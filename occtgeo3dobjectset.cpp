@@ -4,6 +4,14 @@
 #include <QJsonDocument>
 #include <QFile>
 #include <QIODevice>
+#include <STEPControl_Writer.hxx>
+#include <STEPControl_StepModelType.hxx>
+#include <TopoDS_Compound.hxx>
+#include <BRep_Builder.hxx>
+#include <IFSelect_ReturnStatus.hxx>
+#include <Interface_Static.hxx>
+#include <TCollection_AsciiString.hxx>
+#include <Standard_Failure.hxx>
 
 OcctGeo3DObjectSet::OcctGeo3DObjectSet()
     : m_ownsObjects(true)
@@ -338,4 +346,91 @@ bool OcctGeo3DObjectSet::loadFromFile(const QString& filePath)
     }
 
     return fromJson(doc.object());
+}
+
+TopoDS_Compound OcctGeo3DObjectSet::getAllShapesCompound() const
+{
+    TopoDS_Compound compound;
+    BRep_Builder builder;
+    builder.MakeCompound(compound);
+
+    // Add all object shapes to compound
+    for (auto it = m_objects.constBegin(); it != m_objects.constEnd(); ++it) {
+        OcctGeo3DObject* obj = it.value();
+        if (obj) {
+            TopoDS_Shape shape = obj->getTransformedShape();
+            if (!shape.IsNull()) {
+                builder.Add(compound, shape);
+            }
+        }
+    }
+
+    return compound;
+}
+
+bool OcctGeo3DObjectSet::exportToSTEP(const QString& filename) const
+{
+    if (m_objects.isEmpty()) {
+        qWarning() << "Cannot export empty object set";
+        return false;
+    }
+
+    qDebug() << "Step 1: Starting STEP export";
+
+    try {
+        // Create compound with all shapes
+        qDebug() << "Step 2: Creating compound";
+        TopoDS_Compound compound = getAllShapesCompound();
+
+        if (compound.IsNull()) {
+            qWarning() << "Failed to create compound shape";
+            return false;
+        }
+
+        qDebug() << "Step 3: Compound created successfully";
+
+        // Configure STEP parameters BEFORE creating writer
+        qDebug() << "Step 4: Setting STEP parameters";
+        Interface_Static::SetCVal("write.step.unit", "MM");
+        Interface_Static::SetCVal("write.step.schema", "AP203");
+
+        qDebug() << "Step 5: About to create STEPControl_Writer";
+
+        // Create STEP writer - THIS IS WHERE IT CRASHES?
+        STEPControl_Writer* writer = new STEPControl_Writer();
+
+        qDebug() << "Step 6: STEPControl_Writer created";
+
+        // Transfer shape to STEP
+        IFSelect_ReturnStatus status = writer->Transfer(compound, STEPControl_AsIs);
+
+        if (status != IFSelect_RetDone) {
+            qWarning() << "Failed to transfer shapes to STEP format, status:" << status;
+            delete writer;
+            return false;
+        }
+
+        qDebug() << "Step 7: Transfer successful";
+
+        // Write to file
+        TCollection_AsciiString stepFilename(filename.toUtf8().constData());
+        status = writer->Write(stepFilename.ToCString());
+
+        delete writer;
+
+        if (status != IFSelect_RetDone) {
+            qWarning() << "Failed to write STEP file:" << filename << ", status:" << status;
+            return false;
+        }
+
+        qDebug() << "Successfully exported" << m_objects.size() << "objects to STEP file:" << filename;
+        return true;
+
+    } catch (const Standard_Failure& e) {
+        qWarning() << "STEP export exception:" << e.GetMessageString();
+        return false;
+    } catch (...) {
+        qWarning() << "Unknown exception during STEP export";
+        return false;
+    }
 }

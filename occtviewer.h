@@ -32,6 +32,7 @@ public:
     ~OcctViewerWidget();
 
     Handle(AIS_InteractiveContext) getContext() const;
+    Handle(V3d_View) getView() const;
     void fitAll();
 
 protected:
@@ -80,6 +81,8 @@ public:
 private slots:
     void showObjects();
     void fitAll();
+    void saveImage();
+    void exportToSTEP();
 
 private:
     void setupUI();

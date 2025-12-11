@@ -21,6 +21,7 @@
 #include <Aspect_TypeOfLine.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_Drawer.hxx>
+#include <gp_Trsf.hxx>
 
 /**
  * @class OcctGeo3DObject
@@ -115,6 +116,15 @@ public:
      */
     static void registerObjectType(const QString& typeName, ObjectFactory factory);
 
+    // Access to the shape for derived classes
+    TopoDS_Shape getShape() const;
+
+    /**
+     * @brief Gets the shape with position/rotation transforms applied
+     * @return Transformed TopoDS_Shape
+     */
+    TopoDS_Shape getTransformedShape() const;
+
 protected:
     // Pure virtual method for creating shape - must be implemented by derived classes
     virtual TopoDS_Shape createShape() = 0;
@@ -128,8 +138,7 @@ protected:
     // Helper method to apply all updates
     void updateAISObject(const Handle(AIS_InteractiveContext)& context = nullptr);
 
-    // Access to the shape for derived classes
-    TopoDS_Shape getShape() const;
+
 
 private:
     // Transform data
@@ -159,6 +168,7 @@ private:
     // Helper methods
     gp_Trsf computeTransformation() const;
     void applyTransformationToShape();
+
 };
 
 #endif // OCCTGEO3DOBJECT_H
